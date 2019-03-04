@@ -26,20 +26,23 @@ const json = require(thePath);
 
 let res = `contract ${json.contractName} {\n`;
 
+const contractNode = json.ast.nodes.find(item => item.name === json.contractName);
+
 json.abi.forEach((fn) => {
   if (fn.type === 'constructor' || fn.type === 'event') return;
+	const fnNode = contractNode.nodes.find(item => item.nodeType === 'FunctionDefinition' && item.name === fn.name);
 
   res += '    function ';
   if (fn.type === 'function') res += fn.name;
   res += '(';
 
   if (fn.inputs && fn.inputs.length) {
-    const args = fn.inputs.map((inp) => {
-      if (inp.name) {
-        return `${inp.type} ${inp.name}`;
-      } else {
-        return `${inp.type}`;
-      }
+    const args = fn.inputs.map((inp, idx) => {
+			const paramNode = fnNode && fnNode.parameters.parameters[idx];
+			let inpStr = inp.type;
+			if (fnNode && paramNode.storageLocation !== 'default') inpStr += ` ${paramNode.storageLocation}`;
+      if (inp.name) inpStr += ` ${inp.name}`;
+			return inpStr;
     }).join(', ');
 
     res += args;
@@ -53,13 +56,14 @@ json.abi.forEach((fn) => {
 	if (!fn.outputs || !fn.outputs.length) res += ';\n';
   else {
     res += ' returns('
-    const out_args = fn.outputs.map((outp) => {
-      if (outp.name) {
-        return `${outp.type} ${outp.name}`;
-      } else {
-        return `${outp.type}`;
-      }
+    const out_args = fn.outputs.map((outp, idx) => {
+			const paramNode = fnNode && fnNode.returnParameters.parameters[idx];
+			let outpStr = outp.type;
+			if (fnNode && paramNode.storageLocation !== 'default') outpStr += ` ${paramNode.storageLocation}`;
+			if (outp.name) outpStr += ` ${outp.name}`;
+			return outpStr;
     }).join(', ');
+
     res += out_args;
     res += ');\n'
   }
